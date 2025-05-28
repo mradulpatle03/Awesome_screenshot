@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Screen Capture Extension",
+  "version": "1.0",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "icon.png"
+  },
+  "permissions": [ "desktopCapture","tabs", "activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+  {
+  "resources": ["capture.html"],
+  "matches": ["<all_urls>"]
+  }
+  ]
+  
+
+
+}
