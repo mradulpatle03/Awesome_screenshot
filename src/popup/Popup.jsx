@@ -69,110 +69,110 @@ export default function Popup() {
   
   // currently working
   const handleDesktopCapture = () => {
-    console.log("[DEBUG] Starting desktop capture...");
-  
-    chrome.desktopCapture.chooseDesktopMedia(
-      ["screen", "window", "tab"],
-      async (streamId) => {
-        console.log("[DEBUG] chooseDesktopMedia returned streamId:", streamId);
-  
-        if (!streamId) {
-          alert("Desktop capture was canceled or failed.");
-          return;
-        }
-  
-        try {
-          const constraints = {
-            audio: false,
-            video: {
-              mandatory: {
-                chromeMediaSource: "desktop",
-                chromeMediaSourceId: streamId,
-                maxWidth: 10000,
-                maxHeight: 10000,
-              },
+  console.log("[DEBUG] Starting desktop capture...");
+
+  chrome.desktopCapture.chooseDesktopMedia(
+    ["screen", "window", "tab"],
+    async (streamId) => {
+      console.log("[DEBUG] chooseDesktopMedia returned streamId:", streamId);
+
+      if (!streamId) {
+        alert("Desktop capture was canceled or failed.");
+        return;
+      }
+
+      try {
+        const constraints = {
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: streamId,
+              maxWidth: 10000,
+              maxHeight: 10000,
             },
-          };
-  
-          console.log("[DEBUG] Requesting getUserMedia with constraints:", constraints);
-  
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          console.log("[DEBUG] Stream acquired successfully:", stream);
-  
-          const video = document.createElement("video");
-          video.srcObject = stream;
-          video.muted = true;
-          video.autoplay = true;
-          video.playsInline = true;
-          video.style.position = "fixed";
-          video.style.top = "-10000px";
-          document.body.appendChild(video);
-  
-          video.addEventListener("loadedmetadata", () => {
-            console.log("[DEBUG] Video loaded metadata. Dimensions:", video.videoWidth, video.videoHeight);
-  
-            video.play().then(() => {
-              console.log("[DEBUG] Video started playing.");
-  
-              requestAnimationFrame(() => {
-                const width = video.videoWidth;
-                const height = video.videoHeight;
-  
-                if (!width || !height) {
-                  console.error("[ERROR] Could not determine video size.");
-                  alert("Could not determine video size.");
-                  stream.getTracks().forEach((t) => t.stop());
-                  video.remove();
-                  return;
-                }
-  
-                console.log("[DEBUG] Capturing frame from video:", width, height);
-  
-                const canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(video, 0, 0, width, height);
-  
+          },
+        };
+
+        console.log("[DEBUG] Requesting getUserMedia with constraints:", constraints);
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("[DEBUG] Stream acquired successfully:", stream);
+
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.muted = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.style.position = "fixed";
+        video.style.top = "-10000px";
+        document.body.appendChild(video);
+
+        video.addEventListener("loadedmetadata", () => {
+          console.log("[DEBUG] Video loaded metadata. Dimensions:", video.videoWidth, video.videoHeight);
+
+          video.play().then(() => {
+            console.log("[DEBUG] Video started playing.");
+
+            requestAnimationFrame(() => {
+              const width = video.videoWidth;
+              const height = video.videoHeight;
+
+              if (!width || !height) {
+                console.error("[ERROR] Could not determine video size.");
+                alert("Could not determine video size.");
                 stream.getTracks().forEach((t) => t.stop());
                 video.remove();
-  
-                canvas.toBlob((blob) => {
-                  if (!blob) {
-                    console.error("[ERROR] Failed to create screenshot blob.");
-                    alert("Failed to capture the screen.");
-                    return;
-                  }
-  
-                  console.log("[DEBUG] Screenshot blob created, preparing download...");
-  
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "desktop_capture.png";
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }, "image/png");
-              });
-            }).catch((err) => {
-              console.error("[ERROR] Failed to play video:", err);
-              alert("Video playback failed.");
+                return;
+              }
+
+              console.log("[DEBUG] Capturing frame from video:", width, height);
+
+              const canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(video, 0, 0, width, height);
+
+              stream.getTracks().forEach((t) => t.stop());
+              video.remove();
+
+              canvas.toBlob((blob) => {
+                if (!blob) {
+                  console.error("[ERROR] Failed to create screenshot blob.");
+                  alert("Failed to capture the screen.");
+                  return;
+                }
+
+                console.log("[DEBUG] Screenshot blob created, preparing download...");
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "desktop_capture.png";
+                a.click();
+                URL.revokeObjectURL(url);
+              }, "image/png");
             });
+          }).catch((err) => {
+            console.error("[ERROR] Failed to play video:", err);
+            alert("Video playback failed.");
           });
-  
-          video.addEventListener("error", (e) => {
-            console.error("[ERROR] Video element error:", e);
-            alert("An error occurred with the video element.");
-          });
-  
-        } catch (err) {
-          console.error("[ERROR] getUserMedia failed:", err);
-          alert("Failed to access screen: " + err.message);
-        }
+        });
+
+        video.addEventListener("error", (e) => {
+          console.error("[ERROR] Video element error:", e);
+          alert("An error occurred with the video element.");
+        });
+
+      } catch (err) {
+        console.error("[ERROR] getUserMedia failed:", err);
+        alert("Failed to access screen: " + err.message);
       }
-    );
-  };
-  
+    }
+  );
+};
+
   
   
   const handleAnnotateLocal = () => {};

@@ -15,14 +15,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // currently working on
-chrome.action.onClicked.addListener(() => {
-  chrome.windows.create({
-  url: chrome.runtime.getURL("capture.html"),
-  type: "popup",
-  width: 800,
-  height: 600
-  });
-  });
+
 
 
 
