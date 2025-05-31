@@ -58,7 +58,7 @@ export default function Popup() {
     });
   };
 
-  // partially done 
+  // partially done
   const handleFullPageCapture = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
@@ -66,116 +66,107 @@ export default function Popup() {
       chrome.tabs.sendMessage(tab.id, { action: "startFullPageCapture" });
     });
   };
-  
+
   // currently working
-  const handleDesktopCapture = () => {
-  console.log("[DEBUG] Starting desktop capture...");
+  // const handleDesktopCapture = () => {
+  //   chrome.runtime.sendMessage({ action: "chooseDesktopMedia" }, async (response) => {
+  //     if (!response?.success || !response.streamId) {
+  //       alert("Desktop capture was canceled or failed.");
+  //       return;
+  //     }
 
-  chrome.desktopCapture.chooseDesktopMedia(
-    ["screen", "window", "tab"],
-    async (streamId) => {
-      console.log("[DEBUG] chooseDesktopMedia returned streamId:", streamId);
+  //     try {
+  //       const constraints = {
+  //         audio: false,
+  //         video: {
+  //           mandatory: {
+  //             chromeMediaSource: "desktop",
+  //             chromeMediaSourceId: response.streamId,
+  //             maxWidth: 10000,
+  //             maxHeight: 10000,
+  //           },
+  //         },
+  //       };
 
-      if (!streamId) {
-        alert("Desktop capture was canceled or failed.");
-        return;
-      }
+  //       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  //       const video = document.createElement("video");
+  //       video.srcObject = stream;
+  //       video.muted = true;
+  //       video.autoplay = true;
+  //       video.playsInline = true;
+  //       video.style.position = "fixed";
+  //       video.style.top = "-10000px";
+  //       document.body.appendChild(video);
 
-      try {
-        const constraints = {
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: "desktop",
-              chromeMediaSourceId: streamId,
-              maxWidth: 10000,
-              maxHeight: 10000,
-            },
-          },
-        };
+  //       video.addEventListener("loadedmetadata", () => {
+  //         video.play().then(() => {
+  //           const width = video.videoWidth;
+  //           const height = video.videoHeight;
 
-        console.log("[DEBUG] Requesting getUserMedia with constraints:", constraints);
+  //           const canvas = document.createElement("canvas");
+  //           canvas.width = width;
+  //           canvas.height = height;
+  //           const ctx = canvas.getContext("2d");
+  //           ctx.drawImage(video, 0, 0, width, height);
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log("[DEBUG] Stream acquired successfully:", stream);
+  //           stream.getTracks().forEach((t) => t.stop());
+  //           video.remove();
 
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        video.muted = true;
-        video.autoplay = true;
-        video.playsInline = true;
-        video.style.position = "fixed";
-        video.style.top = "-10000px";
-        document.body.appendChild(video);
+  //           canvas.toBlob((blob) => {
+  //             if (!blob) {
+  //               alert("Failed to capture screenshot.");
+  //               return;
+  //             }
 
-        video.addEventListener("loadedmetadata", () => {
-          console.log("[DEBUG] Video loaded metadata. Dimensions:", video.videoWidth, video.videoHeight);
+  //             const url = URL.createObjectURL(blob);
+  //             const a = document.createElement("a");
+  //             a.href = url;
+  //             a.download = "desktop_capture.png";
+  //             a.click();
+  //             URL.revokeObjectURL(url);
+  //           }, "image/png");
+  //         });
+  //       });
+  //     } catch (err) {
+  //       alert("Failed to access screen: " + err.message);
+  //       console.error("getUserMedia error:", err);
+  //     }
+  //   });
+  // };
+  const handleDesktopCapture = () => {};
 
-          video.play().then(() => {
-            console.log("[DEBUG] Video started playing.");
+  // working but with bugs
+  const handleAnnotateLocal = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
 
-            requestAnimationFrame(() => {
-              const width = video.videoWidth;
-              const height = video.videoHeight;
+    input.onchange = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
 
-              if (!width || !height) {
-                console.error("[ERROR] Could not determine video size.");
-                alert("Could not determine video size.");
-                stream.getTracks().forEach((t) => t.stop());
-                video.remove();
-                return;
-              }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const imageData = e.target.result;
 
-              console.log("[DEBUG] Capturing frame from video:", width, height);
-
-              const canvas = document.createElement("canvas");
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(video, 0, 0, width, height);
-
-              stream.getTracks().forEach((t) => t.stop());
-              video.remove();
-
-              canvas.toBlob((blob) => {
-                if (!blob) {
-                  console.error("[ERROR] Failed to create screenshot blob.");
-                  alert("Failed to capture the screen.");
-                  return;
-                }
-
-                console.log("[DEBUG] Screenshot blob created, preparing download...");
-
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "desktop_capture.png";
-                a.click();
-                URL.revokeObjectURL(url);
-              }, "image/png");
-            });
-          }).catch((err) => {
-            console.error("[ERROR] Failed to play video:", err);
-            alert("Video playback failed.");
-          });
+        // Save to storage, THEN open tab
+        chrome.storage.local.set({ annotatedImageData: imageData }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving image:", chrome.runtime.lastError);
+            return;
+          }
+          console.log("Image data saved successfully.");
+          // Only open new tab AFTER image is saved
+          chrome.tabs.create({ url: chrome.runtime.getURL("annotate.html") });
+          window.close(); // close popup
         });
+      };
+      reader.readAsDataURL(file);
+    };
 
-        video.addEventListener("error", (e) => {
-          console.error("[ERROR] Video element error:", e);
-          alert("An error occurred with the video element.");
-        });
+    input.click();
+  };
 
-      } catch (err) {
-        console.error("[ERROR] getUserMedia failed:", err);
-        alert("Failed to access screen: " + err.message);
-      }
-    }
-  );
-};
-
-  
-  
-  const handleAnnotateLocal = () => {};
   const handleSignIn = () => {};
 
   return (
@@ -244,13 +235,15 @@ export default function Popup() {
       </div>
 
       <div className="pt-5">
-        <button
-          onClick={handleSignIn}
-          className="w-full border border-blue-600 text-white rounded-lg p-3 bg-blue-600 hover:bg-blue-700 shadow-lg transition duration-300 ease-in-out font-semibold focus:outline-none focus:ring-4 focus:ring-blue-400"
-          aria-label="Sign in"
-        >
-          Sign in
-        </button>
+        <a href="https://explified-home.web.app/login" target="_blank">
+          <button
+            onClick={handleSignIn}
+            className="w-full border border-blue-600 text-white rounded-lg p-3 bg-blue-600 hover:bg-blue-700 shadow-lg transition duration-300 ease-in-out font-semibold focus:outline-none focus:ring-4 focus:ring-blue-400"
+            aria-label="Sign in"
+          >
+            Sign in
+          </button>
+        </a>
       </div>
     </div>
   );
