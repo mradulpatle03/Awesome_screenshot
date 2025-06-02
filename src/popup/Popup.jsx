@@ -4,7 +4,7 @@ export default function Popup() {
   const [countdown, setCountdown] = useState(0);
   const [isCapturingDelay, setIsCapturingDelay] = useState(false);
 
-  // done
+  // visible part done (background.js)
   const handleVisibleCapture = () => {
     chrome.runtime.sendMessage({ action: "captureVisibleTab" }, (response) => {
       if (response?.image) {
@@ -18,7 +18,7 @@ export default function Popup() {
       }
     });
   };
-  // done
+  // visible part after delay done (background.js)
   const handleVisibleAfterDelay = () => {
     const delaySeconds = 3; // Change this as needed
     setCountdown(delaySeconds);
@@ -49,7 +49,7 @@ export default function Popup() {
       });
     }, 1000);
   };
-  // done
+  // selected area done (content.js)
   const handleSelectedArea = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
@@ -57,85 +57,7 @@ export default function Popup() {
       chrome.tabs.sendMessage(tab.id, { action: "startAreaCapture" });
     });
   };
-
-  // partially done
-  const handleFullPageCapture = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (!tab?.id) return;
-      chrome.tabs.sendMessage(tab.id, { action: "startFullPageCapture" });
-    });
-  };
-
-  // currently working
-  // const handleDesktopCapture = () => {
-  //   chrome.runtime.sendMessage({ action: "chooseDesktopMedia" }, async (response) => {
-  //     if (!response?.success || !response.streamId) {
-  //       alert("Desktop capture was canceled or failed.");
-  //       return;
-  //     }
-
-  //     try {
-  //       const constraints = {
-  //         audio: false,
-  //         video: {
-  //           mandatory: {
-  //             chromeMediaSource: "desktop",
-  //             chromeMediaSourceId: response.streamId,
-  //             maxWidth: 10000,
-  //             maxHeight: 10000,
-  //           },
-  //         },
-  //       };
-
-  //       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  //       const video = document.createElement("video");
-  //       video.srcObject = stream;
-  //       video.muted = true;
-  //       video.autoplay = true;
-  //       video.playsInline = true;
-  //       video.style.position = "fixed";
-  //       video.style.top = "-10000px";
-  //       document.body.appendChild(video);
-
-  //       video.addEventListener("loadedmetadata", () => {
-  //         video.play().then(() => {
-  //           const width = video.videoWidth;
-  //           const height = video.videoHeight;
-
-  //           const canvas = document.createElement("canvas");
-  //           canvas.width = width;
-  //           canvas.height = height;
-  //           const ctx = canvas.getContext("2d");
-  //           ctx.drawImage(video, 0, 0, width, height);
-
-  //           stream.getTracks().forEach((t) => t.stop());
-  //           video.remove();
-
-  //           canvas.toBlob((blob) => {
-  //             if (!blob) {
-  //               alert("Failed to capture screenshot.");
-  //               return;
-  //             }
-
-  //             const url = URL.createObjectURL(blob);
-  //             const a = document.createElement("a");
-  //             a.href = url;
-  //             a.download = "desktop_capture.png";
-  //             a.click();
-  //             URL.revokeObjectURL(url);
-  //           }, "image/png");
-  //         });
-  //       });
-  //     } catch (err) {
-  //       alert("Failed to access screen: " + err.message);
-  //       console.error("getUserMedia error:", err);
-  //     }
-  //   });
-  // };
-  const handleDesktopCapture = () => {};
-
-  // working but with bugs
+  // annotate local done (annotate.html , annotate.js , fabric.min.js)
   const handleAnnotateLocal = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -166,7 +88,20 @@ export default function Popup() {
 
     input.click();
   };
+  // working ...partially (content.js)
+  const handleFullPageCapture = () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
+      if (!tab?.id) return;
+      chrome.tabs.sendMessage(tab.id, { action: "startFullPageCapture" });
+    });
+  };
 
+  // done by VPb
+  const handleDesktopCapture = () => {
+    
+  };
+  
   const handleSignIn = () => {};
 
   return (

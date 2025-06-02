@@ -6,7 +6,7 @@
     "default_popup": "index.html",
     "default_icon": "icon.png"
   },
-  "permissions": [ "desktopCapture","tabs", "activeTab", "scripting", "storage"],
+  "permissions": [ "desktopCapture","tabs", "activeTab", "scripting", "storage","debugger" ],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
