@@ -122,189 +122,83 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   overlay.addEventListener("mousedown", onMouseDown);
 });
 
-// partially working full page
-
-// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-//   if (request.action === "startFullPageCapture") {
-//     const html = document.documentElement;
-//     const totalHeight = html.scrollHeight;
-//     const viewportHeight = window.innerHeight;
-//     const scrollStep = viewportHeight;
-//     const totalScrolls = Math.ceil(totalHeight / scrollStep);
-//     const captures = [];
-  
-//     let currentIndex = 0;
-  
-//     // === 1. Hide fixed/sticky elements ===
-//     const hiddenElements = [];
-//     const allElements = Array.from(document.querySelectorAll("body *"));
-//     allElements.forEach((el) => {
-//       const style = getComputedStyle(el);
-//       const position = style.position;
-//       if (position === "fixed" || position === "sticky") {
-//         el.setAttribute("data-capture-hidden", "true");
-//         hiddenElements.push(el);
-//         el.style.visibility = "hidden";
-//       }
-//     });
-  
-//     const captureScroll = () => {
-//       const scrollY = currentIndex * scrollStep;
-//       window.scrollTo(0, scrollY);
-  
-//       requestAnimationFrame(() => {
-//         setTimeout(() => {
-//           chrome.runtime.sendMessage({ action: "captureVisibleTab" }, (response) => {
-//             if (!response?.image) {
-//               console.error("Capture failed at scroll index", currentIndex);
-//               return;
-//             }
-  
-//             captures.push({ image: response.image, y: window.scrollY });
-  
-//             currentIndex++;
-//             if (currentIndex < totalScrolls) {
-//               captureScroll();
-//             } else {
-//               window.scrollTo(0, 0); // Reset scroll
-//               restoreHiddenElements(); // Restore headers
-//               stitchCaptures(captures, totalHeight, window.innerWidth);
-//             }
-//           });
-//         }, 350); // Wait for layout/render
-//       });
-//     };
-  
-//     const restoreHiddenElements = () => {
-//       hiddenElements.forEach((el) => {
-//         el.style.visibility = "";
-//         el.removeAttribute("data-capture-hidden");
-//       });
-//     };
-  
-//     const stitchCaptures = (captures, fullHeight, width) => {
-//       const scale = window.devicePixelRatio;
-//       const canvas = document.createElement("canvas");
-//       canvas.width = width * scale;
-//       canvas.height = fullHeight * scale;
-  
-//       const ctx = canvas.getContext("2d");
-//       let loaded = 0;
-  
-//       captures.forEach((cap) => {
-//         const img = new Image();
-//         img.onload = () => {
-//           ctx.drawImage(
-//             img,
-//             0,
-//             0,
-//             img.width,
-//             img.height,
-//             0,
-//             cap.y * scale,
-//             img.width,
-//             img.height
-//           );
-//           loaded++;
-//           if (loaded === captures.length) {
-//             canvas.toBlob((blob) => {
-//               const url = URL.createObjectURL(blob);
-//               const a = document.createElement("a");
-//               a.href = url;
-//               a.download = "full_page.png";
-//               a.click();
-//               URL.revokeObjectURL(url);
-//             }, "image/png");
-//           }
-//         };
-//         img.src = cap.image;
-//       });
-//     };
-  
-//     captureScroll();
-//     return;
-//   }
-  
-// });
-
+// full page capture done
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "startFullPageCapture") {
-    const html = document.documentElement;
-    const totalHeight = html.scrollHeight;
-    const viewportHeight = window.innerHeight;
-
+    //  ── 1. Locate the “best” scrollable container ────────────────────────────────────────
     function findMainScrollContainer() {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-    
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const centerX = vw / 2;
+      const centerY = vh / 2;
+
+      // Start with a fallback of <html> or <body>
       let bestCandidate = document.scrollingElement || document.documentElement;
       let maxScore = 0;
-    
-      document.querySelectorAll('body *').forEach((el) => {
+
+      document.querySelectorAll("body *").forEach((el) => {
         const style = getComputedStyle(el);
-        const hasScroll = el.scrollHeight > el.clientHeight + 50;
+        const hasScrollY = el.scrollHeight > el.clientHeight + 50;
         const overflowY = style.overflowY;
-        if (!hasScroll || !(overflowY === 'scroll' || overflowY === 'auto')) return;
-    
+
+        // Must be scrollable in Y
+        if (!hasScrollY || !(overflowY === "scroll" || overflowY === "auto")) {
+          return;
+        }
+
         const rect = el.getBoundingClientRect();
-    
-        // Ignore very narrow or short elements
-        if (rect.width < viewportWidth * 0.5) return;
-        if (rect.height < viewportHeight * 0.3) return;
-    
-        // Prefer elements near center (main content usually here)
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const distanceToCenter = Math.sqrt(
-          Math.pow(centerX - viewportWidth / 2, 2) + Math.pow(centerY - viewportHeight / 2, 2)
-        );
-    
-        // Higher score for bigger, more centered elements
-        const sizeScore = (rect.width / viewportWidth) + (rect.height / viewportHeight);
+
+        // Skip elements that are too narrow or too short
+        if (rect.width < vw * 0.4 || rect.height < vh * 0.3) {
+          return;
+        }
+
+        // Semantic boost if this is <main>, <article>, <section>, or [role="main"]
+        let semanticBoost = 1;
+        const tag = el.tagName.toLowerCase();
+        if (["main", "article", "section"].includes(tag) || el.getAttribute("role") === "main") {
+          semanticBoost = 3;
+        }
+
+        // Compute distance from viewport center
+        const elCenterX = rect.left + rect.width / 2;
+        const elCenterY = rect.top + rect.height / 2;
+        const distanceToCenter = Math.hypot(elCenterX - centerX, elCenterY - centerY);
         const centerScore = 1 / (distanceToCenter + 1); // avoid divide by zero
-        const finalScore = sizeScore * centerScore;
-    
+
+        // Width ratio penalty (narrow elements get penalized)
+        const widthRatio = rect.width / vw;   // e.g. sidebar ~0.2, main ~0.6
+        const widthPenalty = widthRatio;      // so narrower means smaller
+
+        // Size score: height matters more, width matters some
+        const heightRatio = rect.height / vh;
+        const sizeScore = heightRatio + 0.5 * widthRatio;
+
+        // FINAL SCORE = (sizeScore × centerScore × widthPenalty) + semanticBoost
+        const finalScore = sizeScore * centerScore * widthPenalty + semanticBoost;
+
         if (finalScore > maxScore) {
           maxScore = finalScore;
           bestCandidate = el;
         }
       });
-    
+
       return bestCandidate;
     }
-    
-    
 
-    // === 1. Find Scrollable Container ===
-    let scrollContainer = findMainScrollContainer();
-    const allScrollables = Array.from(document.querySelectorAll("body, body *"));
-    for (const el of allScrollables) {
-      const hasScroll = el.scrollHeight > el.clientHeight;
-      const overflowY = getComputedStyle(el).overflowY;
-      if (hasScroll && (overflowY === "scroll" || overflowY === "auto")) {
-        if (el.scrollHeight - el.clientHeight > 100) { // skip small scrolls like dropdowns
-          scrollContainer = el;
-          break;
-        }
-      }
-    }
-
+    const scrollContainer = findMainScrollContainer();
     const totalScrollHeight = scrollContainer.scrollHeight;
     const visibleHeight = scrollContainer.clientHeight;
     const scrollStep = visibleHeight;
     const totalScrolls = Math.ceil(totalScrollHeight / scrollStep);
-    const captures = [];
 
-    let currentIndex = 0;
-
-    // === 2. Hide fixed/sticky elements ===
+    //  ── 2. Hide any fixed/sticky elements that might overlap during capture ─────────────
     const hiddenElements = [];
-    const allElements = Array.from(document.querySelectorAll("body *"));
-    allElements.forEach((el) => {
+    document.querySelectorAll("body *").forEach((el) => {
       const style = getComputedStyle(el);
-      const position = style.position;
+      const pos = style.position;
       const zIndex = parseInt(style.zIndex) || 0;
-      if ((position === "fixed" || position === "sticky") && zIndex >= 10) {
+      if ((pos === "fixed" || pos === "sticky") && zIndex >= 10) {
         const prevStyles = {
           visibility: el.style.visibility,
           opacity: el.style.opacity,
@@ -320,6 +214,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     });
 
+    //  ── 3. Scroll & capture each “page” of the container ──────────────────────────────────
+    const captures = [];
+    let currentIndex = 0;
+
     const captureScroll = () => {
       const scrollY = currentIndex * scrollStep;
       scrollContainer.scrollTo(0, scrollY);
@@ -333,42 +231,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
 
             captures.push({ image: response.image, y: scrollY });
-
             currentIndex++;
+
             if (currentIndex < totalScrolls) {
               captureScroll();
             } else {
+              // When done, scroll back to top and restore hidden elements
               scrollContainer.scrollTo(0, 0);
-              restoreHiddenElements();
+              hiddenElements.forEach((el) => {
+                const prev = JSON.parse(el.getAttribute("data-capture-hidden"));
+                if (prev) {
+                  el.style.visibility = prev.visibility;
+                  el.style.opacity = prev.opacity;
+                  el.style.pointerEvents = prev.pointerEvents;
+                  el.style.transform = prev.transform;
+                }
+                el.removeAttribute("data-capture-hidden");
+              });
               stitchCaptures(captures, totalScrollHeight, scrollContainer.clientWidth);
             }
           });
-        }, 400);
+        }, 400); // allow layout to settle
       });
     };
 
-    const restoreHiddenElements = () => {
-      hiddenElements.forEach((el) => {
-        const prevStyles = JSON.parse(el.getAttribute("data-capture-hidden"));
-        if (prevStyles) {
-          el.style.visibility = prevStyles.visibility;
-          el.style.opacity = prevStyles.opacity;
-          el.style.pointerEvents = prevStyles.pointerEvents;
-          el.style.transform = prevStyles.transform;
-        }
-        el.removeAttribute("data-capture-hidden");
-      });
-    };
-
+    //  ── 4. Stitch all captured images into one big canvas ─────────────────────────────────
     const stitchCaptures = (captures, fullHeight, width) => {
       const scale = window.devicePixelRatio;
       const canvas = document.createElement("canvas");
       canvas.width = width * scale;
       canvas.height = fullHeight * scale;
-
       const ctx = canvas.getContext("2d");
-      let loaded = 0;
 
+      let loadedCount = 0;
       captures.forEach((cap) => {
         const img = new Image();
         img.onload = () => {
@@ -383,8 +278,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             img.width,
             img.height
           );
-          loaded++;
-          if (loaded === captures.length) {
+          loadedCount++;
+          if (loadedCount === captures.length) {
             canvas.toBlob((blob) => {
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
@@ -399,8 +294,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     };
 
+    // Kick off the scroll-and-capture sequence
     captureScroll();
-    return;
+    return; // end of listener
   }
 });
 

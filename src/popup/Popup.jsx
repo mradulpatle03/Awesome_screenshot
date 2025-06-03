@@ -88,7 +88,7 @@ export default function Popup() {
 
     input.click();
   };
-  // working ...partially (content.js)
+  // full page capture done (content.js)
   const handleFullPageCapture = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];
@@ -97,11 +97,94 @@ export default function Popup() {
     });
   };
 
-  // done by VPb
-  const handleDesktopCapture = () => {
-    
-  };
+  // desktop capture - done by VPb - 80% {problem : popup visible in screenshot}
   
+  // const handleDesktopCapture = () => {
+  //   console.log("clicked");
+  
+  //   chrome.desktopCapture.chooseDesktopMedia(["screen", "window", "tab"], async (streamId) => {
+  //     if (!streamId) {
+  //       console.log("User cancelled screen capture");
+  //       return;
+  //     }
+  
+  //     console.log("Got streamId:", streamId);
+  
+  //     try {
+  //       const constraints = {
+  //         audio: false,
+  //         video: {
+  //           mandatory: {
+  //             chromeMediaSource: "desktop",
+  //             chromeMediaSourceId: streamId,
+  //             maxWidth: 10000,
+  //             maxHeight: 10000,
+  //           },
+  //         },
+  //       };
+  
+  //       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  
+  //       const video = document.createElement("video");
+  //       video.srcObject = stream;
+  //       video.muted = true;
+  //       video.autoplay = true;
+  //       video.playsInline = true;
+  //       video.style.position = "fixed";
+  //       video.style.top = "-10000px";
+  //       document.body.appendChild(video);
+  
+  //       video.addEventListener("loadedmetadata", () => {
+  //         video.play().then(() => {
+  //           const width = video.videoWidth;
+  //           const height = video.videoHeight;
+  
+  //           const canvas = document.createElement("canvas");
+  //           canvas.width = width;
+  //           canvas.height = height;
+  
+  //           const ctx = canvas.getContext("2d");
+  //           if (!ctx) {
+  //             alert("Failed to get canvas context.");
+  //             return;
+  //           }
+  
+  //           ctx.drawImage(video, 0, 0, width, height);
+  
+  //           stream.getTracks().forEach((t) => t.stop());
+  //           video.remove();
+  
+  //           canvas.toBlob((blob) => {
+  //             if (!blob) {
+  //               alert("Failed to capture screenshot.");
+  //               return;
+  //             }
+  
+  //             const url = URL.createObjectURL(blob);
+  //             const a = document.createElement("a");
+  //             a.href = url;
+  //             a.download = "desktop_capture.png";
+  //             a.click();
+  //             URL.revokeObjectURL(url);
+  //           }, "image/png");
+  //         }).catch((err) => {
+  //           console.error("Video play error:", err);
+  //           alert("Failed to play video: " + err.message);
+  //         });
+  //       });
+  //     } catch (err) {
+  //       alert("Failed to access screen: " + err.message);
+  //       console.error("getUserMedia error:", err);
+  //     }
+  //   });
+  // };
+
+  // desktop capture - 80% done {problem : popup visible in screenshot} ( background.js , capture.js , capture.html )
+  const handleDesktopCapture = () => {
+    chrome.runtime.sendMessage({ action: 'startDesktopCapture' });
+    window.close(); // ✅ Close the popup so it's not in the capture
+  };
+
   const handleSignIn = () => {};
 
   return (
@@ -172,7 +255,6 @@ export default function Popup() {
       <div className="pt-5">
         <a href="https://explified-home.web.app/login" target="_blank">
           <button
-            onClick={handleSignIn}
             className="w-full border border-blue-600 text-white rounded-lg p-3 bg-blue-600 hover:bg-blue-700 shadow-lg transition duration-300 ease-in-out font-semibold focus:outline-none focus:ring-4 focus:ring-blue-400"
             aria-label="Sign in"
           >

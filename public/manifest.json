@@ -6,7 +6,14 @@
     "default_popup": "index.html",
     "default_icon": "icon.png"
   },
-  "permissions": [ "desktopCapture","tabs", "activeTab", "scripting", "storage","debugger" ],
+  "permissions": [
+    "desktopCapture",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage",
+    "debugger"
+  ],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -16,13 +23,21 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
-  ],"web_accessible_resources": [
-  {
-    "resources": ["annotate.html", "annotate.js", "fabric.min.js","screenshot.png"],
-    "matches": ["<all_urls>"]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "annotate.html",
+        "annotate.js",
+        "fabric.min.js",
+        "screenshot.png",
+        "capture.html",
+        "capture.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
-],
-"content_security_policy": {
-  "extension_pages": "script-src 'self'; object-src 'self'"
-}
 }
