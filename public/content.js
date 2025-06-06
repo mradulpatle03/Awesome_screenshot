@@ -2,6 +2,8 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action !== "startAreaCapture") return;
 
+  alert("Please select the area you want to capture.");
+
   const overlay = document.createElement("div");
   Object.assign(overlay.style, {
     position: "fixed",

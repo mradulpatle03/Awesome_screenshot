@@ -1,3 +1,4 @@
+// visible part + delay done
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // (visible part + after delay) done
   if (request.action === "captureVisibleTab") {
@@ -18,11 +19,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.windows.create({
       url: chrome.runtime.getURL('capture.html'),
       type: 'popup',
-      width: 400,
-      height: 300,
+      width: 500,
+      height: 500,
       top: 100,
       left: 100,
       focused: true
     });
+  }
+});
+
+
+// signin
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // 1. Handle token store
+  if (message.type === "store_token_awesome_screenshot" && message.token) {
+    chrome.storage.sync.set({ auth_token_awesome_screenshot: message.token }, () => {
+      console.log("Token stored successfully:", message.token);
+      sendResponse({ status: "stored" });
+    });
+    return true; // Keep port open for async
   }
 });

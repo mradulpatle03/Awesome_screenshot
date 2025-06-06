@@ -1,3 +1,4 @@
+// desktop capture 80% done
 window.addEventListener('load', () => {
   const sources = ['screen', 'window', 'tab'];
   chrome.desktopCapture.chooseDesktopMedia(sources, streamId => {
@@ -59,6 +60,4 @@ window.addEventListener('load', () => {
     }, 300); // Delay after share dialog (ensures popup is closed)
   });
 });
-
-
 
